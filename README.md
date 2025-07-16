@@ -2,7 +2,7 @@
 
 This is a **peer-to-peer (P2P) encrypted chat application** that allows secure messaging between two users — Alice and Bob — via a central authentication server. The application uses **Diffie-Hellman Key Exchange**, **AES Encryption**, and a secure login mechanism.
 
-![Secure Chat Sequence Diagram](IS_ChatApplication.png)
+![Secure Chat Sequence Diagram](IS_ChatApplication.jpg)
 
 ---
 
