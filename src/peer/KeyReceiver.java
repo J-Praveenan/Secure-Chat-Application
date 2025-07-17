@@ -4,7 +4,10 @@ import color.ConsoleColors;
 import crypto.AESUtil;
 import crypto.DHUtil;
 import crypto.RSAUtil;
+import database.AuthLogger;
+import database.UserAuthManager;
 
+import javax.crypto.SecretKey;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.net.ServerSocket;
@@ -14,13 +17,14 @@ import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.util.Base64;
 import java.util.UUID;
-import javax.crypto.SecretKey;
 
 public class KeyReceiver {
 
   public static SecretKey sessionKey;
 
   public static String startServer(PrivateKey receiverPrivateKey, PublicKey receiverPublicKey) {
+
+    String receiverUsername = UserAuthManager.getCurrentLoggedInUser();
 
     try (ServerSocket serverSocket = new ServerSocket(5000)) {
       System.out.println("🖥 Waiting for peer to connect...");
@@ -55,7 +59,7 @@ public class KeyReceiver {
         byte[] ciphertext = AESUtil.encrypt(combinedMessage, aesKey, iv);
 
         PublicKey aliceRSAPubKey = RSAUtil.getPublicKeyFromBase64(
-                database.UserAuthManager.getPublicKey(senderIdentity));
+                UserAuthManager.getPublicKey(senderIdentity));
         byte[] encryptedAESKey = RSAUtil.encryptRSA(aesKey.getEncoded(), aliceRSAPubKey);
 
         // Step 4: Send RB, encrypted AES key, encrypted message, and IV
@@ -93,6 +97,7 @@ public class KeyReceiver {
 
         String[] parts = decryptedMessage.split("\\|\\|");
         if (parts.length != 3) {
+          AuthLogger.logDHExchange(receiverUsername, senderIdentity, false, "Invalid decrypted message format.");
           throw new IllegalArgumentException("Decrypted message structure invalid! Expected 3 parts.");
         }
 
@@ -108,38 +113,47 @@ public class KeyReceiver {
         String messageToVerify = receivedRB + "||" + aliceDHPubKeyBase64;
 
         System.out.println(ConsoleColors.PURPLE + "\n──────── Signature Verification   ────────" + ConsoleColors.RESET);
-        if (DHUtil.verifyWithPublicKey(messageToVerify.getBytes(), signature2, aliceRSAPubKey)) {
-          System.out.println(ConsoleColors.CYAN + "✅ Signature from receiver verified Successfully." + ConsoleColors.RESET);
-        } else {
+        if (!DHUtil.verifyWithPublicKey(messageToVerify.getBytes(), signature2, aliceRSAPubKey)) {
           System.out.println("❌ Signature verification failed! Aborting.");
+          AuthLogger.logDHExchange(receiverUsername, senderIdentity, false, "Signature verification failed.");
           return null;
         }
+        System.out.println(ConsoleColors.CYAN + "✅ Signature from receiver verified Successfully." + ConsoleColors.RESET);
 
         // Step 7: Verify RB (nonce)
         System.out.println(ConsoleColors.PURPLE + "\n──────── Nonce Verification   ────────" + ConsoleColors.RESET);
-        if (receivedRB.equals(RB)) {
-          System.out.println("🔐 Sent RB     : " + RB);
-          System.out.println("🔐 Received RB : " + receivedRB);
-          System.out.println(ConsoleColors.BLUE + "✅ Nonce matching. Verified Successfully!" + ConsoleColors.RESET);
-        } else {
+        if (!receivedRB.equals(RB)) {
           System.out.println("❌ NonceB mismatch. Aborting.");
+          AuthLogger.logDHExchange(receiverUsername, senderIdentity, false, "Nonce RB mismatch.");
           return null;
         }
+
+        System.out.println("🔐 Sent RB     : " + RB);
+        System.out.println("🔐 Received RB : " + receivedRB);
+        System.out.println(ConsoleColors.BLUE + "✅ Nonce matching. Verified Successfully!" + ConsoleColors.RESET);
 
         // Step 8: Compute shared key
         PublicKey aliceDHPubKey = DHUtil.decodePublicKey(
                 Base64.getDecoder().decode(aliceDHPubKeyBase64));
         sessionKey = DHUtil.computeSharedSecret(bobKeyPair.getPrivate(), aliceDHPubKey);
 
+        AuthLogger.logDHExchange(receiverUsername, senderIdentity, true, "Shared secret derived successfully.");
+
         System.out.println("\n" + ConsoleColors.CYAN + "──────── Session Symmetric Key Shared Successfully! ────────" + ConsoleColors.RESET);
         System.out.println("🔑 Shared Symmetric Key: " + Base64.getEncoder().encodeToString(sessionKey.getEncoded()));
         System.out.println("\n" + ConsoleColors.YELLOW + "🛡️ Session Secured. Begin Chatting!\n" + ConsoleColors.RESET);
 
+        // ✅ Step 9: Respond to Session Verification from sender
+        SessionVerifier.receiveAndRespondVerification(client, sessionKey, receiverUsername, senderIdentity);
+
+
         return senderIdentity;
       }
+
     } catch (Exception e) {
       System.err.println("❌ Error during DH exchange: " + e.getMessage());
       e.printStackTrace();
+      AuthLogger.logDHExchange(receiverUsername, "unknown", false, "Exception: " + e.getMessage());
       return null;
     }
   }

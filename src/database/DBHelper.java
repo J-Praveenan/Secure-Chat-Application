@@ -8,15 +8,23 @@ import java.sql.Statement;
 public class DBHelper {
     private static final String DB_URL = "jdbc:sqlite:chat.db";
 
-    // Connects to the database or create the database
+
     public static Connection connect() {
         try {
-            return DriverManager.getConnection(DB_URL);
+            Connection conn = DriverManager.getConnection("jdbc:sqlite:chat.db");
+
+            // ✅ Enable WAL for concurrent write safety
+            try (Statement stmt = conn.createStatement()) {
+                stmt.execute("PRAGMA journal_mode=WAL;");
+            }
+
+            return conn;
         } catch (SQLException e) {
             System.err.println("DB Connection Failed: " + e.getMessage());
             return null;
         }
     }
+
 
     // Initializes the users and logs tables if not present
     public static void initDatabase() {
@@ -40,12 +48,18 @@ public class DBHelper {
             );
         """;
 
-        try (Connection conn = connect(); Statement stmt = conn.createStatement()) {
-            stmt.execute(usersTable);
-            stmt.execute(logsTable);
-            System.out.println("✅ Database and tables initialized.");
+        try (Connection conn = connect()) {
+            if (conn != null) {
+                try (Statement stmt = conn.createStatement()) {
+                    stmt.execute(usersTable);
+                    stmt.execute(logsTable);
+                    System.out.println("✅ Database and tables initialized.");
+                }
+            } else {
+                System.err.println("❌ Database connection was null during initialization.");
+            }
         } catch (SQLException e) {
-            System.err.println("Database Initialization Error: " + e.getMessage());
+            System.err.println("❌ Database Initialization Error: " + e.getMessage());
         }
     }
 }

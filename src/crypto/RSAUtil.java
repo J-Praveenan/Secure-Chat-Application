@@ -26,6 +26,8 @@ public class RSAUtil {
     }
   }
 
+
+
   // Encode PublicKey as Base64 String
   public static String getBase64PublicKey(PublicKey pubKey) {
     return Base64.getEncoder().encodeToString(pubKey.getEncoded());
@@ -83,6 +85,24 @@ public class RSAUtil {
     signature.update(data.getBytes());
     return signature.sign();
   }
+
+  // Verify signature using PublicKey
+  public static boolean verify(String data, byte[] signatureBytes, PublicKey publicKey) {
+    try {
+      Signature signature = Signature.getInstance("SHA256withRSA");
+      signature.initVerify(publicKey);
+      signature.update(data.getBytes());
+      return signature.verify(signatureBytes);
+    } catch (Exception e) {
+      throw new RuntimeException("Signature verification failed", e);
+    }
+  }
+
+  public static byte[] encodePublicKey(PublicKey publicKey) {
+    return publicKey.getEncoded();
+  }
+
+
 
 
 }
