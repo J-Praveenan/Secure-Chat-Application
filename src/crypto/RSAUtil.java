@@ -15,7 +15,10 @@ public class RSAUtil {
 
   private static final int KEY_SIZE = 2048;
 
-  // Generate key pair (private key , public key)
+  /**
+   * Generates a new RSA key pair.
+   * @return KeyPair containing both private and public keys.
+   */
   public static KeyPair generateKeyPair() {
     try {
       KeyPairGenerator generator = KeyPairGenerator.getInstance("RSA");
@@ -26,19 +29,29 @@ public class RSAUtil {
     }
   }
 
-
-
-  // Encode PublicKey as Base64 String
+  /**
+   * Encodes a PublicKey to a Base64 string.
+   * @param pubKey The public key to encode.
+   * @return Base64 string representation of the public key.
+   */
   public static String getBase64PublicKey(PublicKey pubKey) {
     return Base64.getEncoder().encodeToString(pubKey.getEncoded());
   }
 
-  // Encode PrivateKey as Base64 String
+  /**
+   * Encodes a PrivateKey to a Base64 string.
+   * @param privKey The private key to encode.
+   * @return Base64 string representation of the private key.
+   */
   public static String getBase64PrivateKey(PrivateKey privKey) {
     return Base64.getEncoder().encodeToString(privKey.getEncoded());
   }
 
-  // Convert Base64 public key string to PublicKey object
+  /**
+   * Decodes a Base64-encoded public key string into a PublicKey object.
+   * @param base64Key The Base64 public key string.
+   * @return PublicKey instance.
+   */
   public static PublicKey getPublicKeyFromBase64(String base64Key) {
     try {
       byte[] bytes = Base64.getDecoder().decode(base64Key);
@@ -50,7 +63,11 @@ public class RSAUtil {
     }
   }
 
-  // Decode Base64 and convert to PrivateKey
+  /**
+   * Decodes a Base64-encoded private key string into a PrivateKey object.
+   * @param base64Key The Base64 private key string.
+   * @return PrivateKey instance.
+   */
   public static PrivateKey getPrivateKeyFromBase64(String base64Key) {
     try {
       byte[] bytes = Base64.getDecoder().decode(base64Key);
@@ -62,23 +79,36 @@ public class RSAUtil {
     }
   }
 
-
-  // RSA encryption with PublicKey
+  /**
+   * Encrypts data using an RSA public key.
+   * @param data The plaintext bytes to encrypt.
+   * @param publicKey The recipient's public key.
+   * @return Encrypted byte array.
+   */
   public static byte[] encryptRSA(byte[] data, PublicKey publicKey) throws Exception {
     Cipher cipher = Cipher.getInstance("RSA");
     cipher.init(Cipher.ENCRYPT_MODE, publicKey);
     return cipher.doFinal(data);
   }
 
-  // RSA decryption with PrivateKey
+  /**
+   * Decrypts data using an RSA private key.
+   * @param encryptedData The encrypted byte array.
+   * @param privateKey The private key to decrypt with.
+   * @return Decrypted byte array.
+   */
   public static byte[] decryptRSA(byte[] encryptedData, PrivateKey privateKey) throws Exception {
     Cipher cipher = Cipher.getInstance("RSA");
     cipher.init(Cipher.DECRYPT_MODE, privateKey);
     return cipher.doFinal(encryptedData);
   }
 
-
-  // Sign message using PrivateKey
+  /**
+   * Signs a string message using a private RSA key.
+   * @param data The message to sign.
+   * @param privateKey The private key for signing.
+   * @return Digital signature as a byte array.
+   */
   public static byte[] sign(String data, PrivateKey privateKey) throws Exception {
     Signature signature = Signature.getInstance("SHA256withRSA");
     signature.initSign(privateKey);
@@ -86,7 +116,13 @@ public class RSAUtil {
     return signature.sign();
   }
 
-  // Verify signature using PublicKey
+  /**
+   * Verifies a digital signature using the corresponding RSA public key.
+   * @param data The original message.
+   * @param signatureBytes The signature to verify.
+   * @param publicKey The public key to verify against.
+   * @return true if the signature is valid, false otherwise.
+   */
   public static boolean verify(String data, byte[] signatureBytes, PublicKey publicKey) {
     try {
       Signature signature = Signature.getInstance("SHA256withRSA");
@@ -98,11 +134,13 @@ public class RSAUtil {
     }
   }
 
+  /**
+   * Returns the encoded byte representation of a public key.
+   * Useful for serialization or transport.
+   * @param publicKey RSA public key
+   * @return Encoded byte array
+   */
   public static byte[] encodePublicKey(PublicKey publicKey) {
     return publicKey.getEncoded();
   }
-
-
-
-
 }

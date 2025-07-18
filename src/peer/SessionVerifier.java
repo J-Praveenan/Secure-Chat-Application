@@ -15,7 +15,10 @@ import java.util.UUID;
 
 public class SessionVerifier {
 
-    // ✅ Client Side
+    /**
+     * Sends a session verification message from client to server.
+     * Includes a signed timestamp and nonce, encrypted with the session key.
+     */
     public static void sendVerificationMessage(Socket socket, SecretKey sessionKey,
                                                PrivateKey senderPrivateKey, PublicKey senderPublicKey,
                                                String senderUsername, String receiverUsername) {
@@ -26,9 +29,8 @@ public class SessionVerifier {
             String T1 = Instant.now().toString();
             String nonce = UUID.randomUUID().toString();
 
-
-            // Format: T1||nonce
-            String payloadPlainText = T1 + "||" + nonce ;
+            // Payload format: T1||nonce
+            String payloadPlainText = T1 + "||" + nonce;
 
             byte[] iv = AESUtil.generateIV();
             byte[] encryptedPayload = AESUtil.encrypt(payloadPlainText, sessionKey, iv);
@@ -54,11 +56,14 @@ public class SessionVerifier {
         }
     }
 
-    // ✅ Server Side
-    public static void receiveAndRespondVerification(Socket socket, SecretKey sessionKey, String receiverUsername, String senderUsername) {
+    /**
+     * Receives the session verification message from the client,
+     * validates the payload, and sends a timestamped response back.
+     */
+    public static void receiveAndRespondVerification(Socket socket, SecretKey sessionKey,
+                                                     String receiverUsername, String senderUsername) {
         String nonce = null;
         String T1 = null;
-        //String senderUsername = null;
 
         try {
             DataInputStream in = new DataInputStream(socket.getInputStream());
@@ -86,9 +91,8 @@ public class SessionVerifier {
                 return;
             }
 
-            T1 = split[0];  // Timestamp
+            T1 = split[0];  // Timestamp from sender
             nonce = split[1];
-
 
             System.out.println("🕒 T1: " + T1);
             System.out.println("🔑 Nonce: " + nonce);
@@ -99,7 +103,7 @@ public class SessionVerifier {
                 return;
             }
 
-            // Prepare and send response
+            // Prepare response: Nonce||T2
             String T2_response = Instant.now().toString();
             String responsePlain = nonce + "||" + T2_response;
 

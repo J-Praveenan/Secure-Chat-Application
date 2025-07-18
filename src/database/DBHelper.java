@@ -8,12 +8,16 @@ import java.sql.Statement;
 public class DBHelper {
     private static final String DB_URL = "jdbc:sqlite:chat.db";
 
-
+    /**
+     * Establishes a connection to the SQLite database.
+     * Enables Write-Ahead Logging (WAL) for better concurrency.
+     * @return Connection object or null on failure.
+     */
     public static Connection connect() {
         try {
-            Connection conn = DriverManager.getConnection("jdbc:sqlite:chat.db");
+            Connection conn = DriverManager.getConnection(DB_URL);
 
-            // ✅ Enable WAL for concurrent write safety
+            // Enable WAL mode for improved concurrent read/write support
             try (Statement stmt = conn.createStatement()) {
                 stmt.execute("PRAGMA journal_mode=WAL;");
             }
@@ -25,8 +29,9 @@ public class DBHelper {
         }
     }
 
-
-    // Initializes the users and logs tables if not present
+    /**
+     * Initializes the database by creating required tables (users, logs) if they do not exist.
+     */
     public static void initDatabase() {
         String usersTable = """
             CREATE TABLE IF NOT EXISTS users (

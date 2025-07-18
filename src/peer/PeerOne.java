@@ -32,6 +32,7 @@ public class PeerOne {
     String action = scanner.nextLine().trim().toLowerCase();
 
     if (action.equals("register")) {
+      // ==== User Registration ====
       System.out.println(ConsoleColors.BLUE + "\n📝================ REGISTER USER ================" + ConsoleColors.RESET);
       System.out.print("👤 Enter Username: ");
       String username = scanner.nextLine();
@@ -39,6 +40,7 @@ public class PeerOne {
       System.out.print("🔑 Enter password: ");
       String password = scanner.nextLine();
 
+      // Generate RSA key pair
       KeyPair keyPair = RSAUtil.generateKeyPair();
       PublicKey pubKey = keyPair.getPublic();
       PrivateKey privKey = keyPair.getPrivate();
@@ -48,6 +50,7 @@ public class PeerOne {
 
       if (success) {
         System.out.println(ConsoleColors.GREEN + "✅ Registration successful!" + ConsoleColors.RESET);
+        // Save private key locally
         try (FileWriter writer = new FileWriter(username + "_private.key")) {
           writer.write(RSAUtil.getBase64PrivateKey(privKey));
           System.out.println("🔐 Private key saved to: " + username + "_private.key");
@@ -59,6 +62,7 @@ public class PeerOne {
       }
 
     } else if (action.equals("login")) {
+      // ==== User Login ====
       System.out.println(ConsoleColors.BLUE + "\n🔓================ LOGIN ================" + ConsoleColors.RESET);
       System.out.print("👤 Username: ");
       String username = scanner.nextLine();
@@ -71,11 +75,12 @@ public class PeerOne {
         System.out.println("❌ Login failed. Invalid username/password.");
         return;
       }
-      System.out.println(ConsoleColors.CYAN + "✅ Login successful!" + ConsoleColors.RESET);
 
+      System.out.println(ConsoleColors.CYAN + "✅ Login successful!" + ConsoleColors.RESET);
       sessionPublicKey = RSAUtil.getPublicKeyFromBase64(publicKeyStr);
       loggedInUsername = username;
 
+      // Load private key from local file
       try {
         String privateKeyStr = new String(Files.readAllBytes(Paths.get(username + "_private.key")));
         sessionPrivateKey = RSAUtil.getPrivateKeyFromBase64(privateKeyStr);
@@ -84,6 +89,7 @@ public class PeerOne {
         return;
       }
 
+      // ==== Role Selection (host or connect) ====
       System.out.println(ConsoleColors.BLUE + "\n🎭================ SELECT ROLE ================" + ConsoleColors.RESET);
       System.out.print("Choose role " + ConsoleColors.BLUE + "(host/connect): " + ConsoleColors.RESET);
       String role = scanner.nextLine().trim().toLowerCase();
@@ -92,15 +98,21 @@ public class PeerOne {
       SecretKey sharedKey;
 
       if (role.equals("host")) {
+        // Start server and wait for key exchange from peer
         peerUsername = KeyReceiver.startServer(sessionPrivateKey, sessionPublicKey);
         sharedKey = KeyReceiver.sessionKey;
 
+        // Start chat receiver on port 6000
         new Thread(() -> ChatReceiver.start(6000, sharedKey, peerUsername, loggedInUsername)).start();
-        // ✅ Add delay to ensure receiver is ready
+
+        // Allow receiver to start before sending
         try { Thread.sleep(1000); } catch (InterruptedException ignored) {}
+
+        // Start chat sender on port 6001
         new Thread(() -> ChatSender.start("127.0.0.1", 6001, sharedKey, loggedInUsername, peerUsername)).start();
 
       } else if (role.equals("connect")) {
+        // Initiate connection to remote peer
         System.out.print("🌐 Enter peer IP " + ConsoleColors.BLUE + "(e.g., 127.0.0.1): " + ConsoleColors.RESET);
         String peerIP = scanner.nextLine();
 
@@ -110,6 +122,7 @@ public class PeerOne {
         System.out.print("👤 Enter peer username: ");
         peerUsername = scanner.nextLine();
 
+        // Retrieve peer's public key
         String peerPublicKeyStr = UserAuthManager.getPublicKey(peerUsername);
         if (peerPublicKeyStr == null) {
           System.out.println("❌ Could not find public key for user: " + peerUsername);
@@ -117,12 +130,17 @@ public class PeerOne {
         }
 
         PublicKey peerPublicKey = RSAUtil.getPublicKeyFromBase64(peerPublicKeyStr);
+
+        // Perform session key exchange
         KeySender.sendKeyToPeer(peerIP, port, loggedInUsername, peerUsername, sessionPrivateKey, peerPublicKey);
         sharedKey = KeySender.sessionKey;
 
+        // Start chat receiver on port 6001
         new Thread(() -> ChatReceiver.start(6001, sharedKey, peerUsername, loggedInUsername)).start();
-        // ✅ Add delay
+
         try { Thread.sleep(1000); } catch (InterruptedException ignored) {}
+
+        // Start chat sender on port 6002
         new Thread(() -> ChatSender.start(peerIP, 6002, sharedKey, loggedInUsername, peerUsername)).start();
 
       } else {

@@ -22,6 +22,10 @@ public class KeyReceiver {
 
   public static SecretKey sessionKey;
 
+  /**
+   * Starts a server socket to receive a peer connection, performs mutual authentication,
+   * Diffie-Hellman key exchange, and derives a secure session key.
+   */
   public static String startServer(PrivateKey receiverPrivateKey, PublicKey receiverPublicKey) {
 
     String receiverUsername = UserAuthManager.getCurrentLoggedInUser();
@@ -35,7 +39,7 @@ public class KeyReceiver {
 
         System.out.println("🔗 Peer connected. Starting authentication...");
 
-        // Step 1: Receive sender ID and RA
+        // === Step 1: Receive sender ID and nonce RA ===
         String senderIdentity = in.readUTF();
         String RA = in.readUTF();
 
@@ -43,13 +47,13 @@ public class KeyReceiver {
         System.out.println("🕵️ Sender        : " + senderIdentity);
         System.out.println("📥 Received RA   : " + RA);
 
-        // Step 2: Generate RB and DH key pair
+        // === Step 2: Generate RB and DH key pair ===
         String RB = UUID.randomUUID().toString();
         KeyPair bobKeyPair = DHUtil.generateDHKeyPair();
         String bobDHPubKeyBase64 = Base64.getEncoder().encodeToString(
                 DHUtil.encodePublicKey(bobKeyPair.getPublic()));
 
-        // Step 3: Sign and encrypt (RA || g^b mod p)
+        // === Step 3: Sign and encrypt (RA || DH public key) ===
         String messageToSign = RA + "||" + bobDHPubKeyBase64;
         byte[] signature = DHUtil.signWithPrivateKey(messageToSign.getBytes(), receiverPrivateKey);
         String combinedMessage = messageToSign + "||" + Base64.getEncoder().encodeToString(signature);
@@ -62,7 +66,7 @@ public class KeyReceiver {
                 UserAuthManager.getPublicKey(senderIdentity));
         byte[] encryptedAESKey = RSAUtil.encryptRSA(aesKey.getEncoded(), aliceRSAPubKey);
 
-        // Step 4: Send RB, encrypted AES key, encrypted message, and IV
+        // === Step 4: Send RB and encrypted DH parameters ===
         out.writeUTF(RB);
         out.writeUTF(Base64.getEncoder().encodeToString(encryptedAESKey));
         out.writeUTF(Base64.getEncoder().encodeToString(ciphertext));
@@ -77,7 +81,7 @@ public class KeyReceiver {
         System.out.println("   🔹 Signature (embedded) : " + Base64.getEncoder().encodeToString(signature));
         System.out.println("   🔹 IV               : " + Base64.getEncoder().encodeToString(iv));
 
-        // Step 5: Receive encrypted response from Alice
+        // === Step 5: Receive Alice's encrypted response ===
         byte[] encryptedAESKey2 = Base64.getDecoder().decode(in.readUTF());
         byte[] ciphertext2 = Base64.getDecoder().decode(in.readUTF());
         byte[] iv2 = Base64.getDecoder().decode(in.readUTF());
@@ -88,7 +92,7 @@ public class KeyReceiver {
         System.out.println("   🔹 Ciphertext       : " + Base64.getEncoder().encodeToString(ciphertext2));
         System.out.println("   🔹 IV               : " + Base64.getEncoder().encodeToString(iv2));
 
-        // Step 6: Decrypt Alice's response and verify signature
+        // === Step 6: Decrypt message and validate signature ===
         SecretKey aesKey2 = AESUtil.keyFromBytes(
                 RSAUtil.decryptRSA(encryptedAESKey2, receiverPrivateKey));
 
@@ -112,6 +116,7 @@ public class KeyReceiver {
 
         String messageToVerify = receivedRB + "||" + aliceDHPubKeyBase64;
 
+        // === Step 7: Verify Alice's signature ===
         System.out.println(ConsoleColors.PURPLE + "\n──────── Signature Verification   ────────" + ConsoleColors.RESET);
         if (!DHUtil.verifyWithPublicKey(messageToVerify.getBytes(), signature2, aliceRSAPubKey)) {
           System.out.println("❌ Signature verification failed! Aborting.");
@@ -120,7 +125,7 @@ public class KeyReceiver {
         }
         System.out.println(ConsoleColors.CYAN + "✅ Signature from receiver verified Successfully." + ConsoleColors.RESET);
 
-        // Step 7: Verify RB (nonce)
+        // === Step 8: Verify nonce RB ===
         System.out.println(ConsoleColors.PURPLE + "\n──────── Nonce Verification   ────────" + ConsoleColors.RESET);
         if (!receivedRB.equals(RB)) {
           System.out.println("❌ NonceB mismatch. Aborting.");
@@ -132,7 +137,7 @@ public class KeyReceiver {
         System.out.println("🔐 Received RB : " + receivedRB);
         System.out.println(ConsoleColors.BLUE + "✅ Nonce matching. Verified Successfully!" + ConsoleColors.RESET);
 
-        // Step 8: Compute shared key
+        // === Step 9: Compute shared session key ===
         PublicKey aliceDHPubKey = DHUtil.decodePublicKey(
                 Base64.getDecoder().decode(aliceDHPubKeyBase64));
         sessionKey = DHUtil.computeSharedSecret(bobKeyPair.getPrivate(), aliceDHPubKey);
@@ -143,11 +148,11 @@ public class KeyReceiver {
         System.out.println("🔑 Shared Symmetric Key: " + Base64.getEncoder().encodeToString(sessionKey.getEncoded()));
         System.out.println("\n" + ConsoleColors.YELLOW + "🛡️ Session Secured. Begin Chatting!\n" + ConsoleColors.RESET);
 
-        // ✅ Step 9: Respond to Session Verification from sender
+        // === Step 10: Handle optional session verification for freshness ===
         SessionVerifier.receiveAndRespondVerification(client, sessionKey, receiverUsername, senderIdentity);
 
-
         return senderIdentity;
+
       }
 
     } catch (Exception e) {
