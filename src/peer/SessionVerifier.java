@@ -25,10 +25,10 @@ public class SessionVerifier {
 
             String T1 = Instant.now().toString();
             String nonce = UUID.randomUUID().toString();
-            String T2 = Instant.now().toString();
 
-            // Format: T1||nonce||T2
-            String payloadPlainText = T1 + "||" + nonce + "||" + T2;
+
+            // Format: T1||nonce
+            String payloadPlainText = T1 + "||" + nonce ;
 
             byte[] iv = AESUtil.generateIV();
             byte[] encryptedPayload = AESUtil.encrypt(payloadPlainText, sessionKey, iv);
@@ -80,7 +80,7 @@ public class SessionVerifier {
             String decryptedPlainText = AESUtil.decrypt(encryptedPayload, sessionKey, iv);
             String[] split = decryptedPlainText.split("\\|\\|");
 
-            if (split.length != 3) {
+            if (split.length != 2) {
                 System.out.println("❌ Invalid decrypted format.");
                 AuthLogger.logSessionVerification(receiverUsername, "unknown", false, "Malformed decrypted payload.");
                 return;
@@ -88,12 +88,16 @@ public class SessionVerifier {
 
             T1 = split[0];  // Timestamp
             nonce = split[1];
-            String T2 = split[2];
 
 
             System.out.println("🕒 T1: " + T1);
             System.out.println("🔑 Nonce: " + nonce);
-            System.out.println("📥 T2: " + T2);
+
+            Instant t1Instant = Instant.parse(T1);
+            if (Instant.now().minusSeconds(30).isAfter(t1Instant)) {
+                System.err.println("❌ T1 is too old!");
+                return;
+            }
 
             // Prepare and send response
             String T2_response = Instant.now().toString();

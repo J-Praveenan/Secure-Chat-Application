@@ -10,7 +10,6 @@ import database.UserAuthManager;
 import javax.crypto.SecretKey;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.net.Socket;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.security.KeyPair;
@@ -18,7 +17,7 @@ import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.util.Scanner;
 
-public class PeerMain {
+public class PeerOne {
 
   private static PublicKey sessionPublicKey;
   private static PrivateKey sessionPrivateKey;
@@ -99,7 +98,7 @@ public class PeerMain {
         new Thread(() -> ChatReceiver.start(6000, sharedKey, peerUsername, loggedInUsername)).start();
         // ✅ Add delay to ensure receiver is ready
         try { Thread.sleep(1000); } catch (InterruptedException ignored) {}
-        new Thread(() -> ChatSender.start("127.0.0.1", 6003, sharedKey, loggedInUsername, peerUsername)).start();
+        new Thread(() -> ChatSender.start("127.0.0.1", 6001, sharedKey, loggedInUsername, peerUsername)).start();
 
       } else if (role.equals("connect")) {
         System.out.print("🌐 Enter peer IP " + ConsoleColors.BLUE + "(e.g., 127.0.0.1): " + ConsoleColors.RESET);

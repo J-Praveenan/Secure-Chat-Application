@@ -122,11 +122,13 @@ public class PeerTwo {
         KeySender.sendKeyToPeer(peerIP, port, loggedInUsername, peerUsername, sessionPrivateKey, peerPublicKey);
         SecretKey sharedKey = KeySender.sessionKey;
 
-        new Thread(() -> ChatReceiver.start(6003, sharedKey, peerUsername, loggedInUsername)).start();
-        // ✅ Add delay
+        // ✅ Avoid 6003 since PeerOne uses it
+        new Thread(() -> ChatReceiver.start(6001, sharedKey, peerUsername, loggedInUsername)).start();
         try { Thread.sleep(1000); } catch (InterruptedException ignored) {}
 
-        new Thread(() -> ChatReceiver.start(6000, sharedKey, peerUsername, loggedInUsername)).start();
+        // ✅ Avoid 6000 since PeerOne uses it
+        new Thread(() -> ChatSender.start(peerIP, 6000, sharedKey, loggedInUsername, peerUsername)).start();
+
       } else {
         System.out.println("❌ Invalid role.");
       }
