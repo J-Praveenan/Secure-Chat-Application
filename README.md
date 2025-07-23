@@ -82,7 +82,7 @@ K = g^(ab) mod p
  ```bash
  git clone https://github.com/J-Praveenan/Secure-Chat-Application.git
  cd Secure-Chat-Application
-
+```
 2. **Open two terminal/IDE sessions:**
    - Run `PeerOne.java` in one
    - Run `PeerTwo.java` in the other
@@ -105,6 +105,7 @@ K = g^(ab) mod p
 - All authentication and session events are logged
 
 ## 📁 File Structure
+ ```bash
 Secure-Chat-Application/
 ├── chat/ # Sender/Receiver logic
 ├── crypto/ # RSA, AES, HMAC utilities
@@ -113,3 +114,4 @@ Secure-Chat-Application/
 ├── color/ # Console UI formatting
 ├── IS_ChatApplication.jpg # Secure protocol diagram
 └── README.md # You're here
+```
